@@ -835,3 +835,176 @@ grid.arrange(spplot(afr1, "FIRST_DATE_cases", col.regions = cbw, at = seq(0,2,.0
 #write shapefile with the added information: 
 writeOGR(afr1, layer= 'afr1', dsn = 'afr123', driver = 'ESRI Shapefile')
 dev.off()
+#########
+library(dplyr)
+#FOR THE LINEAR  REGRESSION ANALYSES USING ADJ R2 AS THE DEPENDENT VARIABLE AND A SINGLE INDICATOR AS THE INDEPENDENT VARIABLE
+indices12 = read.csv('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ght results 1-28-2021/ResultsandWBdata2.csv')
+
+indicesdf = data.frame(indices12)
+dim(indicesdf)
+#I wrote out each index, but there's probably an easier way to do this just fyi. As you can see, 
+#you just put each column into the log function in R and it spits out the log-transformed data in 
+#the same format as your previous data frame
+indices12 <- data.frame('Country' = indices12$Country,
+                        'Adjusted.R2' = indices12$Adjusted.R2,
+                        'Access.to.electricity' = indices12$Access.to.electricity,
+                        'Avg.weekly.cases' = indices12$Avg.weekly.cases,
+                        'Community.health.workers' = indices12$Community.health.workers,
+                        'Cumulative.deaths' = indices12$Cumulative.deaths,
+                        'Current.health.expenditure' = indices12$Current.health.expenditure,
+                        'Fixed.broadband.subscriptions' = indices12$Fixed.broadband.subscriptions,
+                        'Fixed.broadband.subscriptions.per' = indices12$Fixed.broadband.subscriptions.per,
+                        'Fixed.telephone.subscriptions' = indices12$Fixed.telephone.subscriptions,
+                        'Fixed.telephone.subscriptions.per' = indices12$Fixed.telephone.subscriptions.per,
+                        'GDP' = indices12$GDP,
+                        'Hospital.beds' = indices12$Hospital.beds,
+                        'Individuals.using.the.Internet' = indices12$Individuals.using.the.Internet,
+                        'Life.expectancy.at.birth' = indices12$Life.expectancy.at.birth,
+                        'Literacy.rate.adult.total' = indices12$Literacy.rate.adult.total,
+                        'Mobile.cellular.subscriptions' = indices12$Mobile.cellular.subscriptions,
+                        'Mobile.cellular.subscriptions.per' = indices12$Mobile.cellular.subscriptions.per,
+                        'People.with.basic.handwashing.facilities' = indices12$People.with.basic.handwashing.facilities,
+                        'Physicians' = indices12$Physicians,
+                        'Population.density' = indices12$Population.density,
+                        'Population' = indices12$Population,
+                        'Prevalence.of.severe.food.insecurity.in.the.population' = indices12$Prevalence.of.severe.food.insecurity.in.the.population,
+                        'Smoking.prevalence' = indices12$Smoking.prevalence,
+                        'Urban.population' = indices12$Urban.population,
+                        'Urban.population.' = indices12$Urban.population.percent.of.pop,
+                        'GDP.per.capita' = indices12$GDP.per.capita,
+                        'Nurses.and.midwives' = indices12$Nurses.and.midwives,
+                        'People.using.at.least.basic.drinking.water.services' = indices12$People.using.at.least.basic.drinking.water.services,
+                        'People.using.at.least.basic.sanitation.services' = indices12$People.using.at.least.basic.sanitation.services,
+                        'People.using.safely.managed.drinking.water.services' = indices12$People.using.safely.managed.drinking.water.services,
+                        'People.using.safely.managed.sanitation.services' = indices12$People.using.safely.managed.sanitation.services,
+                        'Risk.of.catastrophic.expenditure.for.surgical.care' = indices12$Risk.of.catastrophic.expenditure.for.surgical.care,
+                        'Risk.of.impoverishing.expenditure.for.surgical.care' = indices12$Risk.of.impoverishing.expenditure.for.surgical.care,
+                        'Secure.Internet.servers' = indices12$Secure.Internet.servers,
+                        'Prevalence.of.moderate.or.severe.food.insecurity.in.the.population' = indices12$Prevalence.of.moderate.or.severe.food.insecurity.in.the.population,
+                        'Prevalence.of.HIV' = indices12$Prevalence.of.HIV,
+                        'Volatility' = indices12$Volatility)
+
+indices12_log <- data.frame('Country' = indices12$Country,
+                            'Adjusted.R2' = indices12$Adjusted.R2,
+                            'Access.to.electricity' = log(indices12$Access.to.electricity),
+                            'Avg.weekly.cases' = log(indices12$Avg.weekly.cases),
+                            'Community.health.workers' = log(indices12$Community.health.workers),
+                            'Cumulative.deaths' = log(indices12$Cumulative.deaths),
+                            'Current.health.expenditure' = log(indices12$Current.health.expenditure),
+                            'Fixed.broadband.subscriptions' = log(indices12$Fixed.broadband.subscriptions),
+                            'Fixed.broadband.subscriptions.per' = log(indices12$Fixed.broadband.subscriptions.per),
+                            'Fixed.telephone.subscriptions' = log(indices12$Fixed.telephone.subscriptions),
+                            'Fixed.telephone.subscriptions.per' = log(indices12$Fixed.telephone.subscriptions.per),
+                            'GDP' = log(indices12$GDP),
+                            'Hospital.beds' = log(indices12$Hospital.beds),
+                            'Individuals.using.the.Internet' = log(indices12$Individuals.using.the.Internet),
+                            'Life.expectancy.at.birth' = log(indices12$Life.expectancy.at.birth),
+                            'Literacy.rate.adult.total' = log(indices12$Literacy.rate.adult.total),
+                            'Mobile.cellular.subscriptions' = log(indices12$Mobile.cellular.subscriptions),
+                            'Mobile.cellular.subscriptions.per' = log(indices12$Mobile.cellular.subscriptions.per),
+                            'People.with.basic.handwashing.facilities' = log(indices12$People.with.basic.handwashing.facilities),
+                            'Physicians' = log(indices12$Physicians),
+                            'Population.density' = log(indices12$Population.density),
+                            'Population' = log(indices12$Population),
+                            'Prevalence.of.severe.food.insecurity.in.the.population' = log(indices12$Prevalence.of.severe.food.insecurity.in.the.population),
+                            'Smoking.prevalence' = log(indices12$Smoking.prevalence),
+                            'Urban.population' = log(indices12$Urban.population),
+                            'Urban.population.' = log(indices12$Urban.population.),
+                            'GDP.per.capita' = log(indices12$GDP.per.capita),
+                            'Nurses.and.midwives' = log(indices12$Nurses.and.midwives),
+                            'People.using.at.least.basic.drinking.water.services' = log(indices12$People.using.at.least.basic.drinking.water.services),
+                            'People.using.at.least.basic.sanitation.services' = log(indices12$People.using.at.least.basic.sanitation.services),
+                            'People.using.safely.managed.drinking.water.services' = log(indices12$People.using.safely.managed.drinking.water.services),
+                            'People.using.safely.managed.sanitation.services' = log(indices12$People.using.safely.managed.sanitation.services),
+                            'Risk.of.catastrophic.expenditure.for.surgical.care' = log(indices12$Risk.of.catastrophic.expenditure.for.surgical.care),
+                            'Risk.of.impoverishing.expenditure.for.surgical.care' = log(indices12$Risk.of.impoverishing.expenditure.for.surgical.care),
+                            'Secure.Internet.servers' = log(indices12$Secure.Internet.servers),
+                            'Prevalence.of.moderate.or.severe.food.insecurity.in.the.population' = log(indices12$Prevalence.of.moderate.or.severe.food.insecurity.in.the.population),
+                            'Prevalence.of.HIV' = log(indices12$Prevalence.of.HIV),
+                            'Volatility' = log(indices12$Volatility))
+
+names(indices12_log)
+#predictor1 = indices12_log[,c(1:2,4,6:9,11,14,17:19,21,22,26,29:32,34,35)]
+predictor1 = indices12[,c(1:2,38)]
+predictor2 = indices12_log[,c(1:38)]
+
+predictor1 = predictor1[rowSums(is.na(predictor1)) < 1,]
+predictor2 = predictor2[rowSums(is.na(predictor2)) < 1,]
+
+#then you simply use the new data frame in the linear regression model 
+
+model1 = lm(predictor1$'Adjusted.R2' ~
+              predictor1$'Volatility')
+model2 = lm(predictor2$'Adjusted.R2' ~
+              predictor2$'Volatility')
+summary(model1)
+summary(model2)
+#and collect the r2 value
+# r1 = summary(model1)$r.squared
+# r2 = summary(model1)$adj.r.squared
+# r3 = summary(model1)$df
+summary(model1)
+# r1
+# r2
+# r3
+
+# r1_log = summary(model2)$r.squared
+# r2_log = summary(model2)$adj.r.squared
+# r3_log = summary(model2)$df
+summary(model2)
+# r1_log
+# r2_log 
+# r3_log
+
+
+# FOR THE MULTIPLE LINEAR REGRESSION W INDICATORS
+
+# model = lm(predictor1$'Adjusted.R2' ~
+#             predictor1$'Access.to.electricity'+
+#             predictor1$'Avg.weekly.cases'+
+#             predictor1$'Cumulative.deaths'+
+#             predictor1$'Current.health.expenditure'+
+#             predictor1$'GDP'+
+#             predictor1$'Individuals.using.the.Internet'+
+#             predictor1$'Life.expectancy.at.birth'+
+#             predictor1$'Mobile.cellular.subscriptions'+
+#             predictor1$'Mobile.cellular.subscriptions.per'+
+#             predictor1$'Population'+
+#             predictor1$'Urban.population'+
+#             predictor1$'Urban.population.'+
+#             predictor1$'GDP.per.capita'+
+#             predictor1$'People.using.at.least.basic.drinking.water.services'+
+#             predictor1$'People.using.at.least.basic.sanitation.services'+
+#             predictor1$'Secure.Internet.servers'+
+#             predictor1$'Volatility')
+
+model = lm(predictor2$'Adjusted.R2' ~
+             predictor2$'Access.to.electricity'+
+             predictor2$'Avg.weekly.cases'+
+             predictor2$'Cumulative.deaths'+
+             predictor2$'Current.health.expenditure'+
+             predictor2$'GDP'+
+             predictor2$'Individuals.using.the.Internet'+
+             predictor2$'Life.expectancy.at.birth'+
+             predictor2$'Mobile.cellular.subscriptions'+
+             predictor2$'Mobile.cellular.subscriptions.per'+
+             predictor2$'Population'+
+             predictor2$'Urban.population'+
+             predictor2$'Urban.population.'+
+             predictor2$'GDP.per.capita'+
+             predictor2$'People.using.at.least.basic.drinking.water.services'+
+             predictor2$'People.using.at.least.basic.sanitation.services'+
+             predictor2$'Secure.Internet.servers'+
+             predictor2$'Volatility')
+
+sws1 = step (model,direction = 'both')
+# BEST MODEL FROM STANDARD INDICATORS
+# bestmodel1 = lm(predictor1$Adjusted.R2 ~ predictor1$Current.health.expenditure +
+#              predictor1$Life.expectancy.at.birth + predictor1$Mobile.cellular.subscriptions.per +
+#              predictor1$Population + predictor1$GDP.per.capita + predictor1$People.using.at.least.basic.drinking.water.services +
+#              predictor1$Secure.Internet.servers)
+#BEST MODEL FROM LOG ADJUSTED INDICATORS
+#  bestmodel2 = lm(predictor2$Adjusted.R2 ~ predictor2$Avg.weekly.cases + predictor2$Current.health.expenditure +
+# predictor2$Individuals.using.the.Internet + predictor2$Life.expectancy.at.birth +
+#   predictor2$Population + predictor2$GDP.per.capita + predictor2$People.using.at.least.basic.drinking.water.services)
+#  summary(bestmodel2)
