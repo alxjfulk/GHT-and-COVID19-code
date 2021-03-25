@@ -1,7 +1,7 @@
 #####MATCH GOOGLE HEALTH TRENDS - EPIDEMIOLOGICAL DATA######
 
 # --------------------------------------------------------
-#'  Author: Daniel Romero-Alvarez, Alex ###, Qays #####
+#'  Author: Daniel Romero-Alvarez, Alex Fulk, Qays Abu-Saymeh
 #                
 #'  Script to:
 #'  Match google health trends data with weekly case incidence for any state
@@ -13,6 +13,9 @@
 #####LIBRARIES#####
 library (plyr) #transforming lists on dataframes
 library(datetimeutils) #changing_dates
+#for figure 1
+library(ggrepel)
+library( ggplot2 )
 
 #####IMPORTANT DETAILS######
 
@@ -30,25 +33,26 @@ library(datetimeutils) #changing_dates
 #' - Plot of covid-19 incidence + regression line 
 #' - Date of first case per model... 
 #' 
-#Formatting daily case data
-library (plyr) #transforming lists on dataframes
-library(datetimeutils) #changing_dates
+
+####PRE-PROCESSING######
 
 #FOR TRANSFORMING DAILY CASE DATA TO WEEKLY CASE DATA
+#load daily case data
 BR = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 1-28-2021/Central African Republic.csv', header = T)
 
-
+#save relevent information into a dataframe
 BR1 <- data.frame('date' = BR$date,
                   'Cumulative Cases' = BR$Cumulative.Cases,
                   'New Cases' = BR$New.Cases)
 pop1 <- data.frame('pop' = BR$pop)
 
+#fix the dates so that R can work with them
 BR1$date = gsub (BR1$date, pattern ='/',replacement = '-')
 BR1$date = as.Date(BR1$date,format="%m-%d-%Y")
 
 BR1$date = as.Date(BR1$date)
 
-
+#subset the data to the appropriate timeframe 
 BR1 = BR1[BR1$date > '2020-02-01'& BR1$date < '2021-01-25',] 
 tail(BR1)
 #subset by important columns: 
@@ -84,10 +88,10 @@ BR_week$data = as.Date(BR_week$data) #define first column as class dates
 #add population column
 BR_week$pop=rep(pop1[1,"pop"],length(BR_week$New.Cases))
 
-
+#write the file with the weekly case data and population column added
 write.csv (BR_week, 'C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/Weekly 1-28-2021/SouthAfrica1.csv', row.names = F)
 
-#formatting GHT data
+#####formatting GHT data#####
 AL1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/GHTdata 1-28-2021/ZA_ZA.csv')
 AL1$date = as.Date(AL1$date) #convert columns to actual dates
 AL1 = AL1[AL1$date > '2020-02-01'& AL1$date < '2021-01-29',] 
@@ -108,8 +112,9 @@ def_tms1 <- data.frame('COVID19' = def_tms$COVID19,
 average_tm = apply(def_tms1, 2, FUN = mean)
 
 median_tm = apply(def_tms1, 2, FUN= median) #obtaining a vector with the medians
-bp = names(median_tm)#names for boxplot
 
+####MULTIPLE LINEAR REGRESSION ANALYSIS WITH WEEKLY CASES AS DEPENDENT VARIABLE AND GHT SEARCH DATA AS INDEPENDENT VARIABLE####
+#this is used to do the regression analysis and create the figure corresponding to the country that you are doing the regression for 
 #reading data already processed by week
 AL_br1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/Weekly 1-28-2021/SouthAfrica1.csv')
 
@@ -125,10 +130,10 @@ ot$date = as.Date(ot$date) #defining as dates
 f_c = ot$New.Cases[ot$New.Cases>0][1] #number of first cases in the original state database
 f_c1 = AL_br1$New.Cases[AL_br1$New.Cases>0][1] #number of first cases in the weekly state database
 
-ff_1 = as.Date(ot[which(ot$New.Cases == f_c)[1], 1]) #obtain the date through index and subsetting table 1, 8 represents column with dates in this table
-ff_2 = as.Date(AL_br1[which(AL_br1$New.Cases == f_c1)[1], 1]) #obtain the date through index and subsetting table 2, 4 represents column with dates in this table
+ff_1 = as.Date(ot[which(ot$New.Cases == f_c)[1], 1]) #obtain the date through index and subsetting table 1
+ff_2 = as.Date(AL_br1[which(AL_br1$New.Cases == f_c1)[1], 1]) #obtain the date through index and subsetting table 2
 
-#calculate incidence per state adding a new column to the brazilian datafram: inci: 
+#calculate incidence per state adding a new column to the datafram: inci: 
 AL_br1$inci = AL_br1$New.Cases/AL_br1$pop
 
 #regression using all available terms per state: 
@@ -143,7 +148,7 @@ AL1_model = lm(AL1_form1) #regression
 
 AL1_rq = summary(AL1_model)$adj.r.squared #collect adj. r squared
 
-
+#FOR HIGH QUALITY FIGURE OUTPUT
 tiff("South Africa.tiff", units="in", width=6, height=5, res=300)
 
 #plot incidence
@@ -165,51 +170,8 @@ text (30, quantile(AL_br1$inci, 0.95),
 legend('topleft', legend=c("Observed", "Model"),
        col=c("black", 'blue'), pch = c(NA,19,NA), lty = c(1, 1, 1), cex=0.8) 
 dev.off()
-
-####SUMMARY MODELS R2 plots#####
-#READ THE BRAZILIAN CODE THAT IS FULLY COMMENTED, THE OTHER ONES ARE A REPETITION OF THIS ONE...
-
-#BRAZIL: 
-br = read.table ('./alex_qays_res1/GHTBrazilResultsFull.txt', sep = '\t', header = T) #reading the table, 
-
-#' NOTICE: that you should make sure to 
-#' eliminate weird characters such as Amapá, 
-#' you should elimiante the accent...manually in the file...
-
-head (br) #checking the first 6 lines 
-
-plot (br$Adjusted.R2, ylab = 'Adj. R2', xaxt = 'n', xlab = '', main = 'Brazil', type = 'h') #creating the plot and vertical lines
-points (br$Adjusted.R2, pch = 16) #adding the points
-axis (1, at= (1:length(br$States)),labels = br$States, las= 2, cex.axis = 0.6) #adding the x axis with the names of the states or countries...
-abline (h = 0.6, lty= 2) #adding the threshold line, in this case, 0.6!
-
-#AFRICAN COUNTRIES deacreasing R2 plot: 
-af = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ght results 1-28-2021/r2plot.csv')
-ac = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/R2 plot/r2sorted.csv')
-af = data.frame(af)
-
-head (af)
-
-bp_countries = af[,1:2] #only countries and r2 values
-
-bp2 = bp_countries[order(bp_countries$Adjusted.R2, decreasing = T),] #ordering the dataframe with the r2 values from high to low 
-bp = row.names (bp2$ID) #obtaining the ordered names for the plot
-
-y1 <- expression(Adjusted ~ R^2)
-x1 <- expression(Adjusted ~ R^2 ~ Results)
-
-tiff("r2plot.tiff", units="in", width=6, height=5, res=300)
-
-par(mfrow=c(1,1))
-par(mar=c(4,5,3,1)+.1)
-plot (bp2$Adjusted.R2, ylab = y1, xaxt = 'n', xlab = 'African Countries', main = x1, type = 'h')
-points (bp2$Adjusted.R2, pch = 16)
-axis (1, at= (1:length(bp2$ID)),labels = bp2$ID, las= 2, cex.axis = 0.5)
-abline (h = 0.6, lty= 2) 
-dev.off()
-
 #####VOLATILITY INDEX######
-
+#code used to create the volatility index indicator for each country
 #Example with ALGERIA
 
 #working directory 
@@ -293,25 +255,340 @@ plot (camer_norm, main = paste ('Volatility = ', round (camer_v,3), sep = ''), t
 # 
 # Record the new r_square
 
+######INDICATOR REGRESSION ANALYSES#######
 
-#####ELIMINATING NAs######
-#this is used to create dataframes without NAs for regression analysis 
-#fake dataframe 
-a = sample (1:100, 50)
-b = c(1:25, rep (NA, 25))
-c = c (1:50)
+#FOR THE LINEAR  REGRESSION ANALYSES USING ADJ R2 AS THE DEPENDENT VARIABLE AND A SINGLE INDICATOR AS THE INDEPENDENT VARIABLE
+#load data
+indices12 = read.csv('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ght results 1-28-2021/ResultsandWBdata2.csv')
 
-#dataframe 
-dff = data.frame (a, b, c)
-dim(dff)
+indicesdf = data.frame(indices12)
 
-#eliminate rows with NAs
-dff2 = dff[rowSums(is.na (dff))!=1, ] #If NAs are present in more than one column is better to use <1 instead of !=1 because a lot of them are going to be greater thatn 1... 
-dim(dff2)
+#I wrote out each index, but there's probably an easier way to do this just fyi. As you can see, 
+#you just put each column into the log function in R and it spits out the log-transformed data in 
+#the same format as your previous data frame
+indices12 <- data.frame('Country' = indices12$Country,
+                        'Adjusted.R2' = indices12$Adjusted.R2,
+                        'Access.to.electricity' = indices12$Access.to.electricity,
+                        'Avg.weekly.cases' = indices12$Avg.weekly.cases,
+                        'Community.health.workers' = indices12$Community.health.workers,
+                        'Cumulative.deaths' = indices12$Cumulative.deaths,
+                        'Current.health.expenditure' = indices12$Current.health.expenditure,
+                        'Fixed.broadband.subscriptions' = indices12$Fixed.broadband.subscriptions,
+                        'Fixed.broadband.subscriptions.per' = indices12$Fixed.broadband.subscriptions.per,
+                        'Fixed.telephone.subscriptions' = indices12$Fixed.telephone.subscriptions,
+                        'Fixed.telephone.subscriptions.per' = indices12$Fixed.telephone.subscriptions.per,
+                        'GDP' = indices12$GDP,
+                        'Hospital.beds' = indices12$Hospital.beds,
+                        'Individuals.using.the.Internet' = indices12$Individuals.using.the.Internet,
+                        'Life.expectancy.at.birth' = indices12$Life.expectancy.at.birth,
+                        'Literacy.rate.adult.total' = indices12$Literacy.rate.adult.total,
+                        'Mobile.cellular.subscriptions' = indices12$Mobile.cellular.subscriptions,
+                        'Mobile.cellular.subscriptions.per' = indices12$Mobile.cellular.subscriptions.per,
+                        'People.with.basic.handwashing.facilities' = indices12$People.with.basic.handwashing.facilities,
+                        'Physicians' = indices12$Physicians,
+                        'Population.density' = indices12$Population.density,
+                        'Population' = indices12$Population,
+                        'Prevalence.of.severe.food.insecurity.in.the.population' = indices12$Prevalence.of.severe.food.insecurity.in.the.population,
+                        'Smoking.prevalence' = indices12$Smoking.prevalence,
+                        'Urban.population' = indices12$Urban.population,
+                        'Urban.population.' = indices12$Urban.population.percent.of.pop,
+                        'GDP.per.capita' = indices12$GDP.per.capita,
+                        'Nurses.and.midwives' = indices12$Nurses.and.midwives,
+                        'People.using.at.least.basic.drinking.water.services' = indices12$People.using.at.least.basic.drinking.water.services,
+                        'People.using.at.least.basic.sanitation.services' = indices12$People.using.at.least.basic.sanitation.services,
+                        'People.using.safely.managed.drinking.water.services' = indices12$People.using.safely.managed.drinking.water.services,
+                        'People.using.safely.managed.sanitation.services' = indices12$People.using.safely.managed.sanitation.services,
+                        'Risk.of.catastrophic.expenditure.for.surgical.care' = indices12$Risk.of.catastrophic.expenditure.for.surgical.care,
+                        'Risk.of.impoverishing.expenditure.for.surgical.care' = indices12$Risk.of.impoverishing.expenditure.for.surgical.care,
+                        'Secure.Internet.servers' = indices12$Secure.Internet.servers,
+                        'Prevalence.of.moderate.or.severe.food.insecurity.in.the.population' = indices12$Prevalence.of.moderate.or.severe.food.insecurity.in.the.population,
+                        'Prevalence.of.HIV' = indices12$Prevalence.of.HIV,
+                        'Volatility' = indices12$Volatility)
+
+indices12_log <- data.frame('Country' = indices12$Country,
+                            'Adjusted.R2' = indices12$Adjusted.R2,
+                            'Access.to.electricity' = log(indices12$Access.to.electricity),
+                            'Avg.weekly.cases' = log(indices12$Avg.weekly.cases),
+                            'Community.health.workers' = log(indices12$Community.health.workers),
+                            'Cumulative.deaths' = log(indices12$Cumulative.deaths),
+                            'Current.health.expenditure' = log(indices12$Current.health.expenditure),
+                            'Fixed.broadband.subscriptions' = log(indices12$Fixed.broadband.subscriptions),
+                            'Fixed.broadband.subscriptions.per' = log(indices12$Fixed.broadband.subscriptions.per),
+                            'Fixed.telephone.subscriptions' = log(indices12$Fixed.telephone.subscriptions),
+                            'Fixed.telephone.subscriptions.per' = log(indices12$Fixed.telephone.subscriptions.per),
+                            'GDP' = log(indices12$GDP),
+                            'Hospital.beds' = log(indices12$Hospital.beds),
+                            'Individuals.using.the.Internet' = log(indices12$Individuals.using.the.Internet),
+                            'Life.expectancy.at.birth' = log(indices12$Life.expectancy.at.birth),
+                            'Literacy.rate.adult.total' = log(indices12$Literacy.rate.adult.total),
+                            'Mobile.cellular.subscriptions' = log(indices12$Mobile.cellular.subscriptions),
+                            'Mobile.cellular.subscriptions.per' = log(indices12$Mobile.cellular.subscriptions.per),
+                            'People.with.basic.handwashing.facilities' = log(indices12$People.with.basic.handwashing.facilities),
+                            'Physicians' = log(indices12$Physicians),
+                            'Population.density' = log(indices12$Population.density),
+                            'Population' = log(indices12$Population),
+                            'Prevalence.of.severe.food.insecurity.in.the.population' = log(indices12$Prevalence.of.severe.food.insecurity.in.the.population),
+                            'Smoking.prevalence' = log(indices12$Smoking.prevalence),
+                            'Urban.population' = log(indices12$Urban.population),
+                            'Urban.population.' = log(indices12$Urban.population.),
+                            'GDP.per.capita' = log(indices12$GDP.per.capita),
+                            'Nurses.and.midwives' = log(indices12$Nurses.and.midwives),
+                            'People.using.at.least.basic.drinking.water.services' = log(indices12$People.using.at.least.basic.drinking.water.services),
+                            'People.using.at.least.basic.sanitation.services' = log(indices12$People.using.at.least.basic.sanitation.services),
+                            'People.using.safely.managed.drinking.water.services' = log(indices12$People.using.safely.managed.drinking.water.services),
+                            'People.using.safely.managed.sanitation.services' = log(indices12$People.using.safely.managed.sanitation.services),
+                            'Risk.of.catastrophic.expenditure.for.surgical.care' = log(indices12$Risk.of.catastrophic.expenditure.for.surgical.care),
+                            'Risk.of.impoverishing.expenditure.for.surgical.care' = log(indices12$Risk.of.impoverishing.expenditure.for.surgical.care),
+                            'Secure.Internet.servers' = log(indices12$Secure.Internet.servers),
+                            'Prevalence.of.moderate.or.severe.food.insecurity.in.the.population' = log(indices12$Prevalence.of.moderate.or.severe.food.insecurity.in.the.population),
+                            'Prevalence.of.HIV' = log(indices12$Prevalence.of.HIV),
+                            'Volatility' = log(indices12$Volatility))
+
+names(indices12_log)
+#for this section, I did one indicator and its log-adjusted counterpart at a time
+#simply select the indicator that you wish to use:
+predictor1 = indices12[,c(1:2,38)]
+predictor2 = indices12_log[,c(1:38)]
+
+#remove NAs
+predictor1 = predictor1[rowSums(is.na(predictor1)) < 1,]
+predictor2 = predictor2[rowSums(is.na(predictor2)) < 1,]
+
+#then you use the new data frame in the linear regression model 
+
+model1 = lm(predictor1$'Adjusted.R2' ~
+              predictor1$'Volatility')
+model2 = lm(predictor2$'Adjusted.R2' ~
+              predictor2$'Volatility')
+#and collect the r2 value along with any other relevent information that you like:
+summary(model1)
+summary(model2)
+
+# FOR THE MULTIPLE LINEAR REGRESSION W INDICATORS
+#first we define the full model with all of the indicators that will be used:
+
+# model = lm(predictor1$'Adjusted.R2' ~
+#             predictor1$'Access.to.electricity'+
+#             predictor1$'Avg.weekly.cases'+
+#             predictor1$'Cumulative.deaths'+
+#             predictor1$'Current.health.expenditure'+
+#             predictor1$'GDP'+
+#             predictor1$'Individuals.using.the.Internet'+
+#             predictor1$'Life.expectancy.at.birth'+
+#             predictor1$'Mobile.cellular.subscriptions'+
+#             predictor1$'Mobile.cellular.subscriptions.per'+
+#             predictor1$'Population'+
+#             predictor1$'Urban.population'+
+#             predictor1$'Urban.population.'+
+#             predictor1$'GDP.per.capita'+
+#             predictor1$'People.using.at.least.basic.drinking.water.services'+
+#             predictor1$'People.using.at.least.basic.sanitation.services'+
+#             predictor1$'Secure.Internet.servers'+
+#             predictor1$'Volatility')
+#log-adjusted version:
+model = lm(predictor2$'Adjusted.R2' ~
+             predictor2$'Access.to.electricity'+
+             predictor2$'Avg.weekly.cases'+
+             predictor2$'Cumulative.deaths'+
+             predictor2$'Current.health.expenditure'+
+             predictor2$'GDP'+
+             predictor2$'Individuals.using.the.Internet'+
+             predictor2$'Life.expectancy.at.birth'+
+             predictor2$'Mobile.cellular.subscriptions'+
+             predictor2$'Mobile.cellular.subscriptions.per'+
+             predictor2$'Population'+
+             predictor2$'Urban.population'+
+             predictor2$'Urban.population.'+
+             predictor2$'GDP.per.capita'+
+             predictor2$'People.using.at.least.basic.drinking.water.services'+
+             predictor2$'People.using.at.least.basic.sanitation.services'+
+             predictor2$'Secure.Internet.servers'+
+             predictor2$'Volatility')
+#then place the model into the 'step' function to obtain the best combination of indicators based on AIC score
+sws1 = step (model,direction = 'both')
+# BEST MODEL FROM STANDARD INDICATORS
+# bestmodel1 = lm(predictor1$Adjusted.R2 ~ predictor1$Current.health.expenditure +
+#              predictor1$Life.expectancy.at.birth + predictor1$Mobile.cellular.subscriptions.per +
+#              predictor1$Population + predictor1$GDP.per.capita + predictor1$People.using.at.least.basic.drinking.water.services +
+#              predictor1$Secure.Internet.servers)
+#BEST MODEL FROM LOG ADJUSTED INDICATORS
+#  bestmodel2 = lm(predictor2$Adjusted.R2 ~ predictor2$Avg.weekly.cases + predictor2$Current.health.expenditure +
+# predictor2$Individuals.using.the.Internet + predictor2$Life.expectancy.at.birth +
+#   predictor2$Population + predictor2$GDP.per.capita + predictor2$People.using.at.least.basic.drinking.water.services)
+#  summary(bestmodel2)
+
+########FIGURE 1############
+fc = read.csv('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ght results 1-28-2021/dofc.csv')
+fc1 <- data.frame(Country = fc$Country,
+                  First = fc$Day.of.First.Case)
+fc1$First <- as.Date(fc1$First, "%m/%d/%Y")
+colnames(fc1) = c('Country', 'Day.of.the.First.Case')
+
+p <- ggplot( fc1, aes(x=Country, y=Day.of.the.First.Case) ) + geom_point() + 
+  scale_y_date( date_labels = "%b %d", date_breaks = "1 week") +
+  theme(axis.text.x=element_blank()) +
+  labs( y="Date", x="Country")
+p + geom_text_repel(aes(label=fc$ID), size=2) + theme(legend.position = "None")   # text
+
+plot1 = p + geom_label_repel(aes(label=fc$ID), size=2)  + theme(legend.position = "None")   # label
+ggsave('dofcgraph1.tiff', plot=plot1, width=6, height=5,units='in', dpi=300)
 
 
-##############3 best/worst plots with model and regression line###################
-#pickout the 6 countries by hand
+
+######SHAPEFILE FOR MAPS (FIGURE 2)#####
+#you will need to generate these files if you don't download them form the github repository:
+#avg weekly deaths for the four time periods
+list1 = list.files('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 1-28-2021/', full.names = T)
+#creates empty dataframe
+df = list()
+for (i in list1){
+  
+  AL = read.csv (i)
+  AL$caseinci = AL$New.Cases/AL$pop
+  AL$deathinci = AL$New.Death/AL$pop
+  obj1 = mean(AL[12:100,7])
+  obj2 = mean(AL[101:192,7])
+  obj3 = mean(AL[193:284,7])
+  obj4 = mean(AL[285:373,7])
+  cl = c(obj1,obj2,obj3,obj4)
+  df[[length(df)+1]] = cl
+}
+
+finalobj = t(data.frame(df))
+finalobj = data.frame(finalobj)
+
+#change column names for the four time periods
+names(finalobj)[names(finalobj) == "X1"] <- "Feb.2.to.April.30"
+names(finalobj)[names(finalobj) == "X2"] <- "May.1.to.July.31"
+names(finalobj)[names(finalobj) == "X3"] <- "Aug.1.to.Oct.31"
+names(finalobj)[names(finalobj) == "X4"] <- "Nov.1.to.Jan.28"
+View(finalobj)
+write.csv (finalobj, 'C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/avgcasesanddeath/avgcases_1-28-2021.csv', row.names = F )
+
+
+#HERE IS WHERE THE CODE RELEVENT TO CREATING THE SHAPE FILE BEGINS:
+#reading databases (with official country ID and corrected by population (incidence), top line is case data, bottom is death data)
+cas = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/avgcasesanddeath/avgcases_1-28-2021_samescale.csv')
+cas1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/avgcasesanddeath/avgdeath_1-28-2021_samescale.csv')
+fc1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/dofcredo1.csv')
+
+#download the world in countries from: https://www.naturalearthdata.com/downloads/50m-cultural-vectors/
+
+#read the shapefile: 
+wrd = readOGR ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ne_10m_admin_0_countries/ne_10m_admin_0_countries.shp')
+WGS84 = crs(wrd) #define the projection 
+
+names(wrd@data) #check the name of the columns
+unique (wrd@data$CONTINENT) #check the names of the column called CONTIINENT 
+unique (wrd@data$NAME)
+
+#add the two missing countries (seychelles and mauritius) and remove the disputed territories (somaliland and western sahara)
+coun1 = subset(wrd, NAME == 'Seychelles')
+coun2 = subset(wrd, NAME == 'Mauritius')
+afr1 = subset (wrd, CONTINENT == 'Africa') #subset by continent name
+rbind(afr1,coun1) -> afr1
+rbind(afr1,coun2) -> afr1
+row.names.remove <- c("193","207")
+afr1[!row.names(afr1@data) %in% row.names.remove,] -> afr1
+#plot (afr1) #plot the map 
+afr1@data$SOV_A3[39] <- 'SSD'#SSD's 3 letter alpha 3 code is incorrect for some reason, this fixes that
+names (afr1@data) #review the names of the attribute table of the subset object 
+
+
+#Now the plan is to make the incidence dataframe match with the spatial polygons dataframe
+
+length (afr1@data$NAME) #checking the length of both dataframes
+length(fc1$Country) 
+
+sort(afr1@data$SOV_A3)#sorting the country names by alphabetical order
+afr1@data$NAME
+
+or1 = afr1@data$SOV_A3 #defining objects to compare the names, from spatial polygon 
+or2 = fc1$ID #defining objects to compare names, from the incidence dataframe
+or1 == or2 #comparing both objects...a lot of differences...
+
+#' because of that we decided to MANUALLY add a column in the incidence dataframe
+#' with the three letter SOV_A3 column code from the natural earth shapefile
+#after checking that everything matches: 
+#adding a column from the incidence dataframe in the spatial polygon dataframe for cases: 
+
+afr1@data$FDC = cas$FirstC
+
+afr1@data$SDC = cas$SecondC 
+
+afr1@data$TDC = cas$ThirdC
+
+afr1@data$FoDC = cas$FourthC
+
+afr1@data$Colors = cas$Colors
+
+#for death
+
+afr1@data$FDD = cas1$FirstD
+
+afr1@data$SDD = cas1$SecondD 
+
+afr1@data$TDD = cas1$ThirdD
+
+afr1@data$FoDD = cas1$FourthD
+
+afr1@data$Colors = cas1$Colors
+
+afr1@data$DOFC = fc1$num
+
+afr1@data$DOFC1 = fc1$Num.first.case.1
+
+#write shapefile with the added information: 
+writeOGR(afr1, layer= 'afr1', dsn = 'afr123', driver = 'ESRI Shapefile')
+#from here, we used QGIS to construct the maps form the adjusted shape file
+
+
+
+####FIGURE 3#####
+#READ THE BRAZILIAN CODE THAT IS FULLY COMMENTED, THE OTHER ONES ARE A REPETITION OF THIS ONE...
+
+#BRAZIL: 
+br = read.table ('./alex_qays_res1/GHTBrazilResultsFull.txt', sep = '\t', header = T) #reading the table, 
+
+#' NOTICE: that you should make sure to 
+#' eliminate weird characters such as Amapá, 
+#' you should elimiante the accent...manually in the file...
+
+head (br) #checking the first 6 lines 
+
+plot (br$Adjusted.R2, ylab = 'Adj. R2', xaxt = 'n', xlab = '', main = 'Brazil', type = 'h') #creating the plot and vertical lines
+points (br$Adjusted.R2, pch = 16) #adding the points
+axis (1, at= (1:length(br$States)),labels = br$States, las= 2, cex.axis = 0.6) #adding the x axis with the names of the states or countries...
+abline (h = 0.6, lty= 2) #adding the threshold line, in this case, 0.6!
+
+#AFRICAN COUNTRIES deacreasing R2 plot: 
+af = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ght results 1-28-2021/r2plot.csv')
+ac = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/R2 plot/r2sorted.csv')
+af = data.frame(af)
+
+head (af)
+
+bp_countries = af[,1:2] #only countries and r2 values
+
+bp2 = bp_countries[order(bp_countries$Adjusted.R2, decreasing = T),] #ordering the dataframe with the r2 values from high to low 
+bp = row.names (bp2$ID) #obtaining the ordered names for the plot
+
+y1 <- expression(Adjusted ~ R^2)
+x1 <- expression(Adjusted ~ R^2 ~ Results)
+
+tiff("r2plot.tiff", units="in", width=6, height=5, res=300)
+
+par(mfrow=c(1,1))
+par(mar=c(4,5,3,1)+.1)
+plot (bp2$Adjusted.R2, ylab = y1, xaxt = 'n', xlab = 'African Countries', main = x1, type = 'h')
+points (bp2$Adjusted.R2, pch = 16)
+axis (1, at= (1:length(bp2$ID)),labels = bp2$ID, las= 2, cex.axis = 0.5)
+abline (h = 0.6, lty= 2) 
+dev.off()
+
+
+##############FIGURE 4###################
+#pick out the 6 countries by hand
 
 AL1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/GHTdata/TZ_TZ.csv')
 AL2 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/GHTdata/TN_TN.csv')
@@ -471,7 +748,7 @@ ot3 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa 
 ot3 <- data.frame('date' = ot3$date,
                   'Cumulative Cases' = ot3$Cumulative.Cases,
                   'New Cases' = ot3$New.Cases)
-#some of the dataframes already have proper dates
+#some of the dataframes already have proper dates, and re-formatting will cause errors
 # ot3$date = gsub (ot3$date, pattern ='/',replacement = '-')
 # ot3$date = as.Date(ot3$date,format="%m-%d-%Y")
 # ot3$date = as.Date(ot3$date) #defining as dates
@@ -656,355 +933,5 @@ text (7, quantile(AL_br6$inci, 0.95),
       labels = paste ('First case = ', '\n\ ', ff_6, sep = ''), 
       cex = 0.8, pos = '1', col= 'red', srt = 0)
 dev.off()
-#####avg weekly deaths for the four time periods######
-list1 = list.files('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 1-28-2021/', full.names = T)
-library(plyr)
-#creates empty dataframe
-df = list()
-#AL = read.csv('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 1-28-2021/Algeria.csv')
-for (i in list1){
-  
-  AL = read.csv (i)
-  AL$caseinci = AL$New.Cases/AL$pop
-  AL$deathinci = AL$New.Death/AL$pop
-  obj1 = mean(AL[12:100,7])
-  obj2 = mean(AL[101:192,7])
-  obj3 = mean(AL[193:284,7])
-  obj4 = mean(AL[285:373,7])
-  cl = c(obj1,obj2,obj3,obj4)
-  df[[length(df)+1]] = cl
-}
-
-finalobj = t(data.frame(df))
-finalobj = data.frame(finalobj)
-#change column names for the three time periods
-names(finalobj)[names(finalobj) == "X1"] <- "Feb.2.to.April.30"
-names(finalobj)[names(finalobj) == "X2"] <- "May.1.to.July.31"
-names(finalobj)[names(finalobj) == "X3"] <- "Aug.1.to.Oct.31"
-names(finalobj)[names(finalobj) == "X4"] <- "Nov.1.to.Jan.28"
-View(finalobj)
-write.csv (finalobj, 'C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/avgcasesanddeath/avgcases_1-28-2021.csv', row.names = F )
-
-########day of first case graph############
-#FIGURE 1
-fc = read.csv('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ght results 1-28-2021/dofc.csv')
-#ac = read.csv('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/avgcasesanddeath/avgcases1sorted.csv')
-fc1 <- data.frame(Country = fc$Country,
-                  First = fc$Day.of.First.Case)
-fc1$First <- as.Date(fc1$First, "%m/%d/%Y")
-# plot(Day.of.First.Case ~ Country, fc1, xaxt = "n", type = "l")
-# axis(1, fc1$Day.of.First.Case, format(fc1$Day.of.First.Case, "%b %d"), cex.axis = .7)
-colnames(fc1) = c('Country', 'Day.of.the.First.Case')
-
-library(ggrepel)
-library( ggplot2 )
-
-p <- ggplot( fc1, aes(x=Country, y=Day.of.the.First.Case) ) + geom_point() + 
-  scale_y_date( date_labels = "%b %d", date_breaks = "1 week") +
-  theme(axis.text.x=element_blank()) +
-  labs( y="Date", x="Country")
-p + geom_text_repel(aes(label=fc$ID), size=2) + theme(legend.position = "None")   # text
-
-plot1 = p + geom_label_repel(aes(label=fc$ID), size=2)  + theme(legend.position = "None")   # label
-ggsave('dofcgraph1.tiff', plot=plot1, width=6, height=5,units='in', dpi=300)
-
-######MAPS IN R BASED ON DATAFRAMES#####
-#we didnt end up using these, but in case anyone would like to replicate the maps in a simple way:
-#required packages
-library(sp)
-library(raster)
-library(maps)
-library(rgeos)
-library (rgdal)
-library (maptools)
-library(mapdata)
-library(utils)
-library(gridExtra)
 
 
-#Setting the working directory 
-#setwd('/Users/daniel/Documents/CORONAVIRUS/brazil/_MANUSCRIPT')
-
-#reading databases (with official country ID and corrected by population (incidence), top line is case data, bottom is death data)
-cas = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/avgcasesanddeath/avgcases_1-28-2021_samescale.csv')
-cas1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/avgcasesanddeath/avgdeath_1-28-2021_samescale.csv')
-#fc1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/drafts/Supplementary Table 2 - Terms that had information_AF.csv')
-fc1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/dofcredo1.csv')
-
-# head (cas) #checking the first 6 rows
-# head (death)
-
-#reading the shapefiles
-#writeOGR(amr_sh3, layer= 'shape_3', dsn = 'shape_3', driver = 'ESRI Shapefile') #create shape files
-#download the world in countries from: https://www.naturalearthdata.com/downloads/50m-cultural-vectors/
-
-#read the shapefile: 
-wrd = readOGR ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ne_10m_admin_0_countries/ne_10m_admin_0_countries.shp')
-WGS84 = crs(wrd) #define the projection 
-
-names(wrd@data) #check the name of the columns
-unique (wrd@data$CONTINENT) #check the names of the column called CONTIINENT 
-unique (wrd@data$NAME)
-
-#add the two missing countries and remove the disputed territories (somaliland and western sahara)
-coun1 = subset(wrd, NAME == 'Seychelles')
-coun2 = subset(wrd, NAME == 'Mauritius')
-afr1 = subset (wrd, CONTINENT == 'Africa') #subset by continent name
-rbind(afr1,coun1) -> afr1
-rbind(afr1,coun2) -> afr1
-row.names.remove <- c("193","207")
-afr1[!row.names(afr1@data) %in% row.names.remove,] -> afr1
-View(afr1@data)
-View(wrd@data)
-#plot (afr1) #plot the map 
-afr1@data$SOV_A3[39] <- 'SSD'
-names (afr1@data) #review the names of the attribute table of the subset object 
-
-#Now the plan is to make the incidence dataframe match with the spatial polygons dataframe
-
-length (afr1@data$NAME) #checking the length of both dataframes
-length(fc1$Country) 
-
-sort(afr1@data$SOV_A3)#sorting the country names by alphabetical order
-afr1@data$NAME
-#View(afr1@data)
-or1 = afr1@data$SOV_A3 #defining objects to compare the names, from spatial polygon 
-or2 = fc1$ID #defining objects to compare names, from the incidence dataframe
-or1 == or2 #comparing both objects...a lot of differences...
-
-#' because of that we decided to MANUALLY add a column in the incidence dataframe
-#' with the three letter SOV_A3 column code from the natural earth shapefile
-#after checking that everything matches: 
-#adding a column from the incidence dataframe in the spatial polygon dataframe for cases: 
-
-afr1@data$FDC = cas$FirstC
-
-afr1@data$SDC = cas$SecondC#replace by the correct name of the column 
-
-afr1@data$TDC = cas$ThirdC
-
-afr1@data$FoDC = cas$FourthC
-
-afr1@data$Colors = cas$Colors
-
-#for death
-
-afr1@data$FDD = cas1$FirstD
-
-afr1@data$SDD = cas1$SecondD#replace by the correct name of the column 
-
-afr1@data$TDD = cas1$ThirdD
-
-afr1@data$FoDD = cas1$FourthD
-
-afr1@data$Colors = cas1$Colors
-
-afr1@data$DOFC = fc1$num
-
-afr1@data$DOFC1 = fc1$Num.first.case.1
-
-#Creating the color ramp: 
-#rampcolor: 
-gradient_color = colorRampPalette(c("white", "blue", "blue3")) #for cases
-gradient_color1 = colorRampPalette(c("white", "orange", "red2")) #for deaths
-#select desired colors, 
-#check: http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf
-#check: https://colorbrewer2.org/#type=sequential&scheme=BuGn&n=3
-
-cbw = gradient_color(30) #select a number of available colors for the map
-cbw1 = gradient_color1(30)
-tiff("avgcaseanddeath.tiff", units="in", width=10, height=5, res=300)
-grid.arrange(spplot(afr1, "FIRST_DATE_cases", col.regions = cbw, at = seq(0,2,.08),main=list(label="February 2 to March 31",cex=1)) , 
-             spplot(afr1, "SECOND_DATE_cases", col.regions = cbw, at = seq(0,30,1),main=list(label="April 1 to May 31",cex=1)), 
-             spplot(afr1, "THIRD_DATE_cases", col.regions = cbw, at = seq(0,140,5),main=list(label="June 1 to August 2",cex=1)),
-             spplot(afr1, "FIRST_DATE_death", col.regions = cbw1, at = seq(0,.1,.005),main=list(label="February 2 to March 31",cex=1)),
-             spplot(afr1, "SECOND_DATE_death", col.regions = cbw1, at = seq(0,1,.05),main=list(label="April 1 to May 31",cex=1)),
-             spplot(afr1, "THIRD_DATE_death", col.regions = cbw1, at = seq(0,2.30,.08),main=list(label="June 1 to August 2",cex=1)),
-             ncol=3)
-
-#Plot the figures: 
-# spplot(afr1, "FIRST_DATE",
-#        col.regions = cbw, at = seq(0,2e-5,.000001),main=list(label="February 2 to March 31",cex=1))
-# # #Plot the figures: 
-# # spplot(afr1, "FIRST_DATE",
-# #        col.regions = cbw, cuts = 10, scale = (draw = T),main=list(label="February 2 to March 31",cex=1))
-# #February 2 to March 31
-# #April 1 to May 31
-# #June 1 to August 2
-
-#write shapefile with the added information: 
-writeOGR(afr1, layer= 'afr1', dsn = 'afr123', driver = 'ESRI Shapefile')
-dev.off()
-#########
-library(dplyr)
-#FOR THE LINEAR  REGRESSION ANALYSES USING ADJ R2 AS THE DEPENDENT VARIABLE AND A SINGLE INDICATOR AS THE INDEPENDENT VARIABLE
-indices12 = read.csv('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ght results 1-28-2021/ResultsandWBdata2.csv')
-
-indicesdf = data.frame(indices12)
-dim(indicesdf)
-#I wrote out each index, but there's probably an easier way to do this just fyi. As you can see, 
-#you just put each column into the log function in R and it spits out the log-transformed data in 
-#the same format as your previous data frame
-indices12 <- data.frame('Country' = indices12$Country,
-                        'Adjusted.R2' = indices12$Adjusted.R2,
-                        'Access.to.electricity' = indices12$Access.to.electricity,
-                        'Avg.weekly.cases' = indices12$Avg.weekly.cases,
-                        'Community.health.workers' = indices12$Community.health.workers,
-                        'Cumulative.deaths' = indices12$Cumulative.deaths,
-                        'Current.health.expenditure' = indices12$Current.health.expenditure,
-                        'Fixed.broadband.subscriptions' = indices12$Fixed.broadband.subscriptions,
-                        'Fixed.broadband.subscriptions.per' = indices12$Fixed.broadband.subscriptions.per,
-                        'Fixed.telephone.subscriptions' = indices12$Fixed.telephone.subscriptions,
-                        'Fixed.telephone.subscriptions.per' = indices12$Fixed.telephone.subscriptions.per,
-                        'GDP' = indices12$GDP,
-                        'Hospital.beds' = indices12$Hospital.beds,
-                        'Individuals.using.the.Internet' = indices12$Individuals.using.the.Internet,
-                        'Life.expectancy.at.birth' = indices12$Life.expectancy.at.birth,
-                        'Literacy.rate.adult.total' = indices12$Literacy.rate.adult.total,
-                        'Mobile.cellular.subscriptions' = indices12$Mobile.cellular.subscriptions,
-                        'Mobile.cellular.subscriptions.per' = indices12$Mobile.cellular.subscriptions.per,
-                        'People.with.basic.handwashing.facilities' = indices12$People.with.basic.handwashing.facilities,
-                        'Physicians' = indices12$Physicians,
-                        'Population.density' = indices12$Population.density,
-                        'Population' = indices12$Population,
-                        'Prevalence.of.severe.food.insecurity.in.the.population' = indices12$Prevalence.of.severe.food.insecurity.in.the.population,
-                        'Smoking.prevalence' = indices12$Smoking.prevalence,
-                        'Urban.population' = indices12$Urban.population,
-                        'Urban.population.' = indices12$Urban.population.percent.of.pop,
-                        'GDP.per.capita' = indices12$GDP.per.capita,
-                        'Nurses.and.midwives' = indices12$Nurses.and.midwives,
-                        'People.using.at.least.basic.drinking.water.services' = indices12$People.using.at.least.basic.drinking.water.services,
-                        'People.using.at.least.basic.sanitation.services' = indices12$People.using.at.least.basic.sanitation.services,
-                        'People.using.safely.managed.drinking.water.services' = indices12$People.using.safely.managed.drinking.water.services,
-                        'People.using.safely.managed.sanitation.services' = indices12$People.using.safely.managed.sanitation.services,
-                        'Risk.of.catastrophic.expenditure.for.surgical.care' = indices12$Risk.of.catastrophic.expenditure.for.surgical.care,
-                        'Risk.of.impoverishing.expenditure.for.surgical.care' = indices12$Risk.of.impoverishing.expenditure.for.surgical.care,
-                        'Secure.Internet.servers' = indices12$Secure.Internet.servers,
-                        'Prevalence.of.moderate.or.severe.food.insecurity.in.the.population' = indices12$Prevalence.of.moderate.or.severe.food.insecurity.in.the.population,
-                        'Prevalence.of.HIV' = indices12$Prevalence.of.HIV,
-                        'Volatility' = indices12$Volatility)
-
-indices12_log <- data.frame('Country' = indices12$Country,
-                            'Adjusted.R2' = indices12$Adjusted.R2,
-                            'Access.to.electricity' = log(indices12$Access.to.electricity),
-                            'Avg.weekly.cases' = log(indices12$Avg.weekly.cases),
-                            'Community.health.workers' = log(indices12$Community.health.workers),
-                            'Cumulative.deaths' = log(indices12$Cumulative.deaths),
-                            'Current.health.expenditure' = log(indices12$Current.health.expenditure),
-                            'Fixed.broadband.subscriptions' = log(indices12$Fixed.broadband.subscriptions),
-                            'Fixed.broadband.subscriptions.per' = log(indices12$Fixed.broadband.subscriptions.per),
-                            'Fixed.telephone.subscriptions' = log(indices12$Fixed.telephone.subscriptions),
-                            'Fixed.telephone.subscriptions.per' = log(indices12$Fixed.telephone.subscriptions.per),
-                            'GDP' = log(indices12$GDP),
-                            'Hospital.beds' = log(indices12$Hospital.beds),
-                            'Individuals.using.the.Internet' = log(indices12$Individuals.using.the.Internet),
-                            'Life.expectancy.at.birth' = log(indices12$Life.expectancy.at.birth),
-                            'Literacy.rate.adult.total' = log(indices12$Literacy.rate.adult.total),
-                            'Mobile.cellular.subscriptions' = log(indices12$Mobile.cellular.subscriptions),
-                            'Mobile.cellular.subscriptions.per' = log(indices12$Mobile.cellular.subscriptions.per),
-                            'People.with.basic.handwashing.facilities' = log(indices12$People.with.basic.handwashing.facilities),
-                            'Physicians' = log(indices12$Physicians),
-                            'Population.density' = log(indices12$Population.density),
-                            'Population' = log(indices12$Population),
-                            'Prevalence.of.severe.food.insecurity.in.the.population' = log(indices12$Prevalence.of.severe.food.insecurity.in.the.population),
-                            'Smoking.prevalence' = log(indices12$Smoking.prevalence),
-                            'Urban.population' = log(indices12$Urban.population),
-                            'Urban.population.' = log(indices12$Urban.population.),
-                            'GDP.per.capita' = log(indices12$GDP.per.capita),
-                            'Nurses.and.midwives' = log(indices12$Nurses.and.midwives),
-                            'People.using.at.least.basic.drinking.water.services' = log(indices12$People.using.at.least.basic.drinking.water.services),
-                            'People.using.at.least.basic.sanitation.services' = log(indices12$People.using.at.least.basic.sanitation.services),
-                            'People.using.safely.managed.drinking.water.services' = log(indices12$People.using.safely.managed.drinking.water.services),
-                            'People.using.safely.managed.sanitation.services' = log(indices12$People.using.safely.managed.sanitation.services),
-                            'Risk.of.catastrophic.expenditure.for.surgical.care' = log(indices12$Risk.of.catastrophic.expenditure.for.surgical.care),
-                            'Risk.of.impoverishing.expenditure.for.surgical.care' = log(indices12$Risk.of.impoverishing.expenditure.for.surgical.care),
-                            'Secure.Internet.servers' = log(indices12$Secure.Internet.servers),
-                            'Prevalence.of.moderate.or.severe.food.insecurity.in.the.population' = log(indices12$Prevalence.of.moderate.or.severe.food.insecurity.in.the.population),
-                            'Prevalence.of.HIV' = log(indices12$Prevalence.of.HIV),
-                            'Volatility' = log(indices12$Volatility))
-
-names(indices12_log)
-#predictor1 = indices12_log[,c(1:2,4,6:9,11,14,17:19,21,22,26,29:32,34,35)]
-predictor1 = indices12[,c(1:2,38)]
-predictor2 = indices12_log[,c(1:38)]
-
-predictor1 = predictor1[rowSums(is.na(predictor1)) < 1,]
-predictor2 = predictor2[rowSums(is.na(predictor2)) < 1,]
-
-#then you simply use the new data frame in the linear regression model 
-
-model1 = lm(predictor1$'Adjusted.R2' ~
-              predictor1$'Volatility')
-model2 = lm(predictor2$'Adjusted.R2' ~
-              predictor2$'Volatility')
-summary(model1)
-summary(model2)
-#and collect the r2 value
-# r1 = summary(model1)$r.squared
-# r2 = summary(model1)$adj.r.squared
-# r3 = summary(model1)$df
-summary(model1)
-# r1
-# r2
-# r3
-
-# r1_log = summary(model2)$r.squared
-# r2_log = summary(model2)$adj.r.squared
-# r3_log = summary(model2)$df
-summary(model2)
-# r1_log
-# r2_log 
-# r3_log
-
-
-# FOR THE MULTIPLE LINEAR REGRESSION W INDICATORS
-
-# model = lm(predictor1$'Adjusted.R2' ~
-#             predictor1$'Access.to.electricity'+
-#             predictor1$'Avg.weekly.cases'+
-#             predictor1$'Cumulative.deaths'+
-#             predictor1$'Current.health.expenditure'+
-#             predictor1$'GDP'+
-#             predictor1$'Individuals.using.the.Internet'+
-#             predictor1$'Life.expectancy.at.birth'+
-#             predictor1$'Mobile.cellular.subscriptions'+
-#             predictor1$'Mobile.cellular.subscriptions.per'+
-#             predictor1$'Population'+
-#             predictor1$'Urban.population'+
-#             predictor1$'Urban.population.'+
-#             predictor1$'GDP.per.capita'+
-#             predictor1$'People.using.at.least.basic.drinking.water.services'+
-#             predictor1$'People.using.at.least.basic.sanitation.services'+
-#             predictor1$'Secure.Internet.servers'+
-#             predictor1$'Volatility')
-
-model = lm(predictor2$'Adjusted.R2' ~
-             predictor2$'Access.to.electricity'+
-             predictor2$'Avg.weekly.cases'+
-             predictor2$'Cumulative.deaths'+
-             predictor2$'Current.health.expenditure'+
-             predictor2$'GDP'+
-             predictor2$'Individuals.using.the.Internet'+
-             predictor2$'Life.expectancy.at.birth'+
-             predictor2$'Mobile.cellular.subscriptions'+
-             predictor2$'Mobile.cellular.subscriptions.per'+
-             predictor2$'Population'+
-             predictor2$'Urban.population'+
-             predictor2$'Urban.population.'+
-             predictor2$'GDP.per.capita'+
-             predictor2$'People.using.at.least.basic.drinking.water.services'+
-             predictor2$'People.using.at.least.basic.sanitation.services'+
-             predictor2$'Secure.Internet.servers'+
-             predictor2$'Volatility')
-
-sws1 = step (model,direction = 'both')
-# BEST MODEL FROM STANDARD INDICATORS
-# bestmodel1 = lm(predictor1$Adjusted.R2 ~ predictor1$Current.health.expenditure +
-#              predictor1$Life.expectancy.at.birth + predictor1$Mobile.cellular.subscriptions.per +
-#              predictor1$Population + predictor1$GDP.per.capita + predictor1$People.using.at.least.basic.drinking.water.services +
-#              predictor1$Secure.Internet.servers)
-#BEST MODEL FROM LOG ADJUSTED INDICATORS
-#  bestmodel2 = lm(predictor2$Adjusted.R2 ~ predictor2$Avg.weekly.cases + predictor2$Current.health.expenditure +
-# predictor2$Individuals.using.the.Internet + predictor2$Life.expectancy.at.birth +
-#   predictor2$Population + predictor2$GDP.per.capita + predictor2$People.using.at.least.basic.drinking.water.services)
-#  summary(bestmodel2)
