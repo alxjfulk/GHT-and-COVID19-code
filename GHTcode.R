@@ -13,9 +13,8 @@
 #####LIBRARIES#####
 library (plyr) #transforming lists on dataframes
 library(datetimeutils) #changing_dates
-#for figure 1
-library(ggrepel)
-library( ggplot2 )
+library(ggrepel) #for fig 1
+library( ggplot2 ) #for fig 1
 
 #####IMPORTANT DETAILS######
 
@@ -37,8 +36,8 @@ library( ggplot2 )
 ####PRE-PROCESSING######
 
 #FOR TRANSFORMING DAILY CASE DATA TO WEEKLY CASE DATA
-#load daily case data
-BR = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 1-28-2021/Central African Republic.csv', header = T)
+#load daily case data for an individual country
+BR = read.csv ('/Central African Republic.csv', header = T)
 
 #save relevent information into a dataframe
 BR1 <- data.frame('date' = BR$date,
@@ -85,16 +84,17 @@ BR_rw = ldply(BR_comp, data.frame) #transform list to dataframe
 BR_week = rbind (BR1[1,1:3], BR_rw) #add first row previously ignored 
 BR_week = BR_week[-(length(BR_week$data)),] #eliminate last row with NA if needed
 BR_week$data = as.Date(BR_week$data) #define first column as class dates 
-#add population column
+#add population column, you will need to look this up for each country
 BR_week$pop=rep(pop1[1,"pop"],length(BR_week$New.Cases))
 
 #write the file with the weekly case data and population column added
-write.csv (BR_week, 'C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/Weekly 1-28-2021/SouthAfrica1.csv', row.names = F)
+write.csv (BR_week, '/SouthAfrica.csv', row.names = F)
 
 #####formatting GHT data#####
-AL1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/GHTdata 1-28-2021/ZA_ZA.csv')
+#load the country search data by its 2-letter alpha 2 code
+AL1 = read.csv ('/ZA_ZA.csv')
 AL1$date = as.Date(AL1$date) #convert columns to actual dates
-AL1 = AL1[AL1$date > '2020-02-01'& AL1$date < '2021-01-29',] 
+AL1 = AL1[AL1$date > '2020-02-01'& AL1$date < '2021-01-29',] #subset to the approporiate timeframe
 
 #usful words: 
 AL2 = AL1[,colSums(AL1 !=0) >0] #this selects those columns that have information 
@@ -105,6 +105,7 @@ names (AL2)
 
 def_tms = AL2[,2:length(AL2)] #only terms dataset
 
+#select words that we would like to analyze. if a word is missing, simply comment out the word.
 def_tms1 <- data.frame('COVID19' = def_tms$COVID19, 
                        'coronavirus' = def_tms$coronavirus,
                        'coronavirus symptoms' = def_tms$coronavirus.symptoms, 
@@ -114,12 +115,15 @@ average_tm = apply(def_tms1, 2, FUN = mean)
 median_tm = apply(def_tms1, 2, FUN= median) #obtaining a vector with the medians
 
 ####MULTIPLE LINEAR REGRESSION ANALYSIS WITH WEEKLY CASES AS DEPENDENT VARIABLE AND GHT SEARCH DATA AS INDEPENDENT VARIABLE####
+
 #this is used to do the regression analysis and create the figure corresponding to the country that you are doing the regression for 
+
 #reading data already processed by week
-AL_br1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/Weekly 1-28-2021/SouthAfrica1.csv')
+AL_br1 = read.csv ('/SouthAfrica.csv')
 
 # #Objects with information of the week of the first case 
-ot = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 1-28-2021/SouthAfrica.csv')
+#load DAILY data file
+ot = read.csv ('/SouthAfrica.csv')
 ot <- data.frame('date' = ot$date,
                  'Cumulative Cases' = ot$Cumulative.Cases,
                  'New Cases' = ot$New.Cases)
@@ -170,15 +174,14 @@ text (30, quantile(AL_br1$inci, 0.95),
 legend('topleft', legend=c("Observed", "Model"),
        col=c("black", 'blue'), pch = c(NA,19,NA), lty = c(1, 1, 1), cex=0.8) 
 dev.off()
+
 #####VOLATILITY INDEX######
 #code used to create the volatility index indicator for each country
-#Example with ALGERIA
 
-#working directory 
-setwd ('/Users/daniel/Documents/CORONAVIRUS/brazil')
+#Example with Zimbabwe
 
-#read data
-alg = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/Weekly 1-28-2021/Zimbabwe.csv')
+#read weekly data for an individual country
+alg = read.csv ('/Zimbabwe.csv')
 
 #I AM USING THE CASES FOR THIS EXAMPLE BUT YOU NEED TO PUT HERE THE INCIDENCE
 alg$inci = alg$New.Cases/alg$pop
@@ -210,44 +213,6 @@ alg_v = mean (do3) #calculate the mean which is the volatility score for that co
 
 plot (alg_norm, main = paste ('Volatility = ', round (alg_v,3), sep = ''), type = 'l') #low volatility
 
-#Example with CAMEROON
-
-#working directory 
-setwd ('/Users/daniel/Documents/CORONAVIRUS/brazil')
-
-#read data
-camer = read.csv ('./alex_qays_volatility/Weekly/Cameroon.csv')
-
-#I AM USING THE CASES FOR THIS EXAMPLE BUT YOU NEED TO PUT HERE THE INCIDENCE
-
-#normalization of the data
-camer_mean = mean (camer$New.Cases) #calculate the mean
-camer_sd = sd(camer$New.Cases) #calculate the standard deviation 
-
-camer_norm = (camer$New.Cases - camer_mean)/camer_sd #normalization for camereria
-
-#comparing histograms
-dev.new()
-par(mfrow = c(2,1))
-hist(camer_norm) #normalized data
-hist(camer$New.Cases) #original data 
-
-length (camer_norm) #total amount of rows 
-
-#volatility index loop 
-do2 = list () #empty list 
-for (d in 1:26){ #loop to total-1 number of rows 
-  t1 = abs(camer_norm[d]-camer_norm[d+1]) #absolute difference between 2 consecutive weeks 
-  do2[[length(do2)+1]] = t1 #add to the list
-}
-
-do3 = unlist (do2) #total of 25 observations
-camer_v = mean (do3) #calculate the mean which is the volatility score for that country
-
-plot (camer_norm, main = paste ('Volatility = ', round (camer_v,3), sep = ''), type = 'l') #high volatility
-
-#Compare plot from Angola and Cameroon to see the difference between low and high volatility! 
-
 
 # Collect the volatility score for each country and then create a regression in the form: 
 # 
@@ -259,11 +224,11 @@ plot (camer_norm, main = paste ('Volatility = ', round (camer_v,3), sep = ''), t
 
 #FOR THE LINEAR  REGRESSION ANALYSES USING ADJ R2 AS THE DEPENDENT VARIABLE AND A SINGLE INDICATOR AS THE INDEPENDENT VARIABLE
 #load data
-indices12 = read.csv('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ght results 1-28-2021/ResultsandWBdata2.csv')
+indices12 = read.csv('/ResultsandWBdata2.csv')
 
 indicesdf = data.frame(indices12)
 
-#I wrote out each index, but there's probably an easier way to do this just fyi. As you can see, 
+#I wrote out each index, but there's probably an easier way to do this just FYI. As you can see, 
 #you just put each column into the log function in R and it spits out the log-transformed data in 
 #the same format as your previous data frame
 indices12 <- data.frame('Country' = indices12$Country,
@@ -345,48 +310,57 @@ indices12_log <- data.frame('Country' = indices12$Country,
                             'Volatility' = log(indices12$Volatility))
 
 names(indices12_log)
+
 #for this section, I did one indicator and its log-adjusted counterpart at a time
-#simply select the indicator that you wish to use:
-predictor1 = indices12[,c(1:2,38)]
-predictor2 = indices12_log[,c(1:38)]
+#simply select the indicator that you wish to use (the names function above will help with this):
+linearpredictor = indices12[,c(1:2,38)]
+linearpredictor1 = indices12_log[,c(1:38)]
 
 #remove NAs
-predictor1 = predictor1[rowSums(is.na(predictor1)) < 1,]
-predictor2 = predictor2[rowSums(is.na(predictor2)) < 1,]
+linearpredictor = linearpredictor[rowSums(is.na(predictor1)) < 1,]
+linearpredictor1 = linearpredictor1[rowSums(is.na(predictor2)) < 1,]
 
 #then you use the new data frame in the linear regression model 
 
-model1 = lm(predictor1$'Adjusted.R2' ~
-              predictor1$'Volatility')
-model2 = lm(predictor2$'Adjusted.R2' ~
-              predictor2$'Volatility')
-#and collect the r2 value along with any other relevent information that you like:
-summary(model1)
-summary(model2)
+linearmodel = lm(linearpredictor$'Adjusted.R2' ~
+              linearpredictor$'Volatility')
+linearmodel1 = lm(linearpredictor1$'Adjusted.R2' ~
+              linearpredictor1$'Volatility')
+#and collect the r2 value along with any other relevant information that you like:
+summary(linearmodel)
+summary(linearmodel1)
 
 # FOR THE MULTIPLE LINEAR REGRESSION W INDICATORS
 #first we define the full model with all of the indicators that will be used:
 
-# model = lm(predictor1$'Adjusted.R2' ~
-#             predictor1$'Access.to.electricity'+
-#             predictor1$'Avg.weekly.cases'+
-#             predictor1$'Cumulative.deaths'+
-#             predictor1$'Current.health.expenditure'+
-#             predictor1$'GDP'+
-#             predictor1$'Individuals.using.the.Internet'+
-#             predictor1$'Life.expectancy.at.birth'+
-#             predictor1$'Mobile.cellular.subscriptions'+
-#             predictor1$'Mobile.cellular.subscriptions.per'+
-#             predictor1$'Population'+
-#             predictor1$'Urban.population'+
-#             predictor1$'Urban.population.'+
-#             predictor1$'GDP.per.capita'+
-#             predictor1$'People.using.at.least.basic.drinking.water.services'+
-#             predictor1$'People.using.at.least.basic.sanitation.services'+
-#             predictor1$'Secure.Internet.servers'+
-#             predictor1$'Volatility')
+#model with regular data: 
+predictor1 = indices12[,c(1:38)]
+
+model = lm(predictor1$'Adjusted.R2' ~
+            predictor1$'Access.to.electricity'+
+            predictor1$'Avg.weekly.cases'+
+            predictor1$'Cumulative.deaths'+
+            predictor1$'Current.health.expenditure'+
+            predictor1$'GDP'+
+            predictor1$'Individuals.using.the.Internet'+
+            predictor1$'Life.expectancy.at.birth'+
+            predictor1$'Mobile.cellular.subscriptions'+
+            predictor1$'Mobile.cellular.subscriptions.per'+
+            predictor1$'Population'+
+            predictor1$'Urban.population'+
+            predictor1$'Urban.population.'+
+            predictor1$'GDP.per.capita'+
+            predictor1$'People.using.at.least.basic.drinking.water.services'+
+            predictor1$'People.using.at.least.basic.sanitation.services'+
+            predictor1$'Secure.Internet.servers'+
+            predictor1$'Volatility')
+
+#then place the model into the 'step' function to obtain the best combination of indicators based on AIC score
+sws = step (model,direction = 'both')
+
 #log-adjusted version:
-model = lm(predictor2$'Adjusted.R2' ~
+predictor2 = indices12_log[,c(1:38)]
+model1 = lm(predictor2$'Adjusted.R2' ~
              predictor2$'Access.to.electricity'+
              predictor2$'Avg.weekly.cases'+
              predictor2$'Cumulative.deaths'+
@@ -405,7 +379,8 @@ model = lm(predictor2$'Adjusted.R2' ~
              predictor2$'Secure.Internet.servers'+
              predictor2$'Volatility')
 #then place the model into the 'step' function to obtain the best combination of indicators based on AIC score
-sws1 = step (model,direction = 'both')
+sws1 = step (model1,direction = 'both')
+
 # BEST MODEL FROM STANDARD INDICATORS
 # bestmodel1 = lm(predictor1$Adjusted.R2 ~ predictor1$Current.health.expenditure +
 #              predictor1$Life.expectancy.at.birth + predictor1$Mobile.cellular.subscriptions.per +
@@ -418,7 +393,7 @@ sws1 = step (model,direction = 'both')
 #  summary(bestmodel2)
 
 ########FIGURE 1############
-fc = read.csv('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ght results 1-28-2021/dofc.csv')
+fc = read.csv('/dofc.csv')
 fc1 <- data.frame(Country = fc$Country,
                   First = fc$Day.of.First.Case)
 fc1$First <- as.Date(fc1$First, "%m/%d/%Y")
@@ -436,46 +411,49 @@ ggsave('dofcgraph1.tiff', plot=plot1, width=6, height=5,units='in', dpi=300)
 
 
 ######SHAPEFILE FOR MAPS (FIGURE 2)#####
+
 #you will need to generate these files if you don't download them form the github repository:
+
 #avg weekly deaths for the four time periods
-list1 = list.files('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 1-28-2021/', full.names = T)
-#creates empty dataframe
-df = list()
-for (i in list1){
-  
-  AL = read.csv (i)
-  AL$caseinci = AL$New.Cases/AL$pop
-  AL$deathinci = AL$New.Death/AL$pop
-  obj1 = mean(AL[12:100,7])
-  obj2 = mean(AL[101:192,7])
-  obj3 = mean(AL[193:284,7])
-  obj4 = mean(AL[285:373,7])
-  cl = c(obj1,obj2,obj3,obj4)
-  df[[length(df)+1]] = cl
-}
-
-finalobj = t(data.frame(df))
-finalobj = data.frame(finalobj)
-
-#change column names for the four time periods
-names(finalobj)[names(finalobj) == "X1"] <- "Feb.2.to.April.30"
-names(finalobj)[names(finalobj) == "X2"] <- "May.1.to.July.31"
-names(finalobj)[names(finalobj) == "X3"] <- "Aug.1.to.Oct.31"
-names(finalobj)[names(finalobj) == "X4"] <- "Nov.1.to.Jan.28"
-View(finalobj)
-write.csv (finalobj, 'C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/avgcasesanddeath/avgcases_1-28-2021.csv', row.names = F )
+#load DAILY case data
+# list1 = list.files('/data 1-28-2021/', full.names = T)
+# #creates empty dataframe
+# df = list()
+# for (i in list1){
+#   
+#   AL = read.csv (i)
+#   AL$caseinci = AL$New.Cases/AL$pop
+#   AL$deathinci = AL$New.Death/AL$pop
+#   obj1 = mean(AL[12:100,7])
+#   obj2 = mean(AL[101:192,7])
+#   obj3 = mean(AL[193:284,7])
+#   obj4 = mean(AL[285:373,7])
+#   cl = c(obj1,obj2,obj3,obj4)
+#   df[[length(df)+1]] = cl
+# }
+# 
+# finalobj = t(data.frame(df))
+# finalobj = data.frame(finalobj)
+# 
+# #change column names for the four time periods
+# names(finalobj)[names(finalobj) == "X1"] <- "Feb.2.to.April.30"
+# names(finalobj)[names(finalobj) == "X2"] <- "May.1.to.July.31"
+# names(finalobj)[names(finalobj) == "X3"] <- "Aug.1.to.Oct.31"
+# names(finalobj)[names(finalobj) == "X4"] <- "Nov.1.to.Jan.28"
+# View(finalobj)
+# write.csv (finalobj, '/avgcases_1-28-2021.csv', row.names = F )
 
 
 #HERE IS WHERE THE CODE RELEVENT TO CREATING THE SHAPE FILE BEGINS:
 #reading databases (with official country ID and corrected by population (incidence), top line is case data, bottom is death data)
-cas = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/avgcasesanddeath/avgcases_1-28-2021_samescale.csv')
-cas1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/avgcasesanddeath/avgdeath_1-28-2021_samescale.csv')
-fc1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/dofcredo1.csv')
+cas = read.csv ('/avgcases_1-28-2021_samescale.csv')
+cas1 = read.csv ('/avgdeath_1-28-2021_samescale.csv')
+fc1 = read.csv ('/dofcredo1.csv')
 
 #download the world in countries from: https://www.naturalearthdata.com/downloads/50m-cultural-vectors/
 
 #read the shapefile: 
-wrd = readOGR ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ne_10m_admin_0_countries/ne_10m_admin_0_countries.shp')
+wrd = readOGR ('/ne_10m_admin_0_countries.shp')
 WGS84 = crs(wrd) #define the projection 
 
 names(wrd@data) #check the name of the columns
@@ -545,14 +523,15 @@ writeOGR(afr1, layer= 'afr1', dsn = 'afr123', driver = 'ESRI Shapefile')
 
 
 ####FIGURE 3#####
-#READ THE BRAZILIAN CODE THAT IS FULLY COMMENTED, THE OTHER ONES ARE A REPETITION OF THIS ONE...
+
+#READ THE BRAZILIAN CODE THAT IS FULLY COMMENTED, THE OTHER ONE IS A REPETITION OF THIS ONE...
 
 #BRAZIL: 
 br = read.table ('./alex_qays_res1/GHTBrazilResultsFull.txt', sep = '\t', header = T) #reading the table, 
 
 #' NOTICE: that you should make sure to 
 #' eliminate weird characters such as Amapá, 
-#' you should elimiante the accent...manually in the file...
+#' you should eliminate the accent...manually in the file...
 
 head (br) #checking the first 6 lines 
 
@@ -561,9 +540,9 @@ points (br$Adjusted.R2, pch = 16) #adding the points
 axis (1, at= (1:length(br$States)),labels = br$States, las= 2, cex.axis = 0.6) #adding the x axis with the names of the states or countries...
 abline (h = 0.6, lty= 2) #adding the threshold line, in this case, 0.6!
 
-#AFRICAN COUNTRIES deacreasing R2 plot: 
-af = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ght results 1-28-2021/r2plot.csv')
-ac = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/R2 plot/r2sorted.csv')
+#AFRICAN COUNTRIES decreasing R2 plot: 
+
+af = read.csv ('/r2plot.csv')
 af = data.frame(af)
 
 head (af)
@@ -590,12 +569,12 @@ dev.off()
 ##############FIGURE 4###################
 #pick out the 6 countries by hand
 
-AL1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/GHTdata/TZ_TZ.csv')
-AL2 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/GHTdata/TN_TN.csv')
-AL3 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/GHTdata/BF_BF.csv')
-AL4 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/GHTdata/SC_SC.csv')
-AL5 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/GHTdata/BJ_BJ.csv')
-AL6 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/GHTdata/NA_NA.csv')
+AL1 = read.csv ('/TZ_TZ.csv')
+AL2 = read.csv ('/TN_TN.csv')
+AL3 = read.csv ('/BF_BF.csv')
+AL4 = read.csv ('/SC_SC.csv')
+AL5 = read.csv ('/BJ_BJ.csv')
+AL6 = read.csv ('/NA_NA.csv')
 
 AL1$date = as.Date(AL1$date) #convert columns to actual dates
 AL1 = AL1[AL1$date > '2020-02-01'& AL1$date < '2020-08-03',] 
@@ -686,16 +665,13 @@ bp6 = names(median_tm6)#names for boxplot
 bp6 = bp6[order(median_tm6, decreasing = T)] 
 
 #reading data already processed by week
-AL_br1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/Weekly/AF_Tanzania.csv')
-AL_br2 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/Weekly/AF_Tunisia.csv')
-AL_br3 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/Weekly/Burkina Faso.csv')
-AL_br4 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/Weekly/AF_Seychelles.csv')
-AL_br5 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/Weekly/Benin.csv')
-AL_br6 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/Weekly/AF_Namibia.csv')
+AL_br1 = read.csv ('/Tanzania.csv')
+AL_br2 = read.csv ('/Tunisia.csv')
+AL_br3 = read.csv ('/Burkina Faso.csv')
+AL_br4 = read.csv ('/Seychelles.csv')
+AL_br5 = read.csv ('/Benin.csv')
+AL_br6 = read.csv ('/Namibia.csv')
 
-# #remove last two weeks of data for nigerian states
-# n<-dim(AL2)[1]
-# AL2<-AL2[1:(n-2),]
 
 length(AL1$date) == length(AL_br1$data) #notice that the column with dates in the brazialian file is called data not date
 length(AL2$date) == length(AL_br2$data)
@@ -716,7 +692,7 @@ AL_br6$data = as.Date (AL_br6$data)
 #linear regresion
 
 #Objects with information of the week of the first case 
-ot1 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 8-9-2020/Tanzania.csv')
+ot1 = read.csv ('/Tanzania.csv')
 ot1 <- data.frame('date' = ot1$date,
                   'Cumulative Cases' = ot1$Cumulative.Cases,
                   'New Cases' = ot1$New.Cases)
@@ -730,7 +706,7 @@ f_c1 = AL_br1$New.Cases[AL_br1$New.Cases>0][1] #number of first cases in the wee
 ff_1 = as.Date(ot1[which(ot1$New.Cases == f_cc1)[1], 1]) #obtain the date through index and subsetting table 1, 8 represents column with dates in this table
 ff__1 = as.Date(AL_br1[which(AL_br1$New.Cases == f_c1)[1], 1]) #obtain the date through index and subsetting table 2, 4 represents column with dates in this table
 #
-ot2 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 8-9-2020/Tunisia.csv')
+ot2 = read.csv ('/Tunisia.csv')
 ot2 <- data.frame('date' = ot2$date,
                   'Cumulative Cases' = ot2$Cumulative.Cases,
                   'New Cases' = ot2$New.Cases)
@@ -744,7 +720,7 @@ f_c2 = AL_br2$New.Cases[AL_br2$New.Cases>0][1] #number of first cases in the wee
 ff_2 = as.Date(ot2[which(ot2$New.Cases == f_cc2)[1], 1]) #obtain the date through index and subsetting table 1, 8 represents column with dates in this table
 ff__2 = as.Date(AL_br2[which(AL_br2$New.Cases == f_c2)[1], 1]) #obtain the date through index and subsetting table 2, 4 represents column with dates in this table
 #
-ot3 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 8-9-2020/Burkina Faso.csv')
+ot3 = read.csv ('/Burkina Faso.csv')
 ot3 <- data.frame('date' = ot3$date,
                   'Cumulative Cases' = ot3$Cumulative.Cases,
                   'New Cases' = ot3$New.Cases)
@@ -759,7 +735,7 @@ f_c3 = AL_br3$New.Cases[AL_br3$New.Cases>0][1] #number of first cases in the wee
 ff_3 = as.Date(ot3[which(ot3$New.Cases == f_cc3)[1], 1]) #obtain the date through index and subsetting table 1, 8 represents column with dates in this table
 ff__3 = as.Date(AL_br3[which(AL_br3$New.Cases == f_c3)[1], 1]) #obtain the date through index and subsetting table 2, 4 represents column with dates in this table
 #
-ot4 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 8-9-2020/Seychelles.csv')
+ot4 = read.csv ('/Seychelles.csv')
 ot4 <- data.frame('date' = ot4$date,
                   'Cumulative Cases' = ot4$Cumulative.Cases,
                   'New Cases' = ot4$New.Cases)
@@ -773,7 +749,7 @@ f_c4 = AL_br4$New.Cases[AL_br4$New.Cases>0][1] #number of first cases in the wee
 ff_4 = as.Date(ot1[which(ot1$New.Cases == f_cc4)[1], 1]) #obtain the date through index and subsetting table 1, 8 represents column with dates in this table
 ff__4 = as.Date(AL_br1[which(AL_br1$New.Cases == f_c4)[1], 1]) #obtain the date through index and subsetting table 2, 4 represents column with dates in this table
 #
-ot5 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 8-9-2020/Benin.csv')
+ot5 = read.csv ('/Benin.csv')
 ot5 <- data.frame('date' = ot5$date,
                   'Cumulative Cases' = ot5$Cumulative.Cases,
                   'New Cases' = ot5$New.Cases)
@@ -787,7 +763,7 @@ f_c5 = AL_br5$New.Cases[AL_br5$New.Cases>0][1] #number of first cases in the wee
 ff_5 = as.Date(ot5[which(ot5$New.Cases == f_cc5)[1], 1]) #obtain the date through index and subsetting table 1, 8 represents column with dates in this table
 ff__5 = as.Date(AL_br5[which(AL_br5$New.Cases == f_c5)[1], 1]) #obtain the date through index and subsetting table 2, 4 represents column with dates in this table
 #
-ot6 = read.csv ('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/data 8-9-2020/Namibia.csv')
+ot6 = read.csv ('/Namibia.csv')
 ot6 <- data.frame('date' = ot6$date,
                   'Cumulative Cases' = ot6$Cumulative.Cases,
                   'New Cases' = ot6$New.Cases)
@@ -844,11 +820,13 @@ AL1_rq4 = summary(AL1_model4)$adj.r.squared
 AL1_rq5 = summary(AL1_model5)$adj.r.squared 
 AL1_rq6 = summary(AL1_model6)$adj.r.squared 
 
-setwd('C:/Users/bigfo/OneDrive/Desktop/School/Research/Covid19/Africa Country Data/Combined1/ght results 8-9-2020')
+#set the working directory so that you know where your figures go after being generated
+setwd('')
 
 #plot all 6 countries in one pane
 tiff("test.png", units="in", width=10, height=5, res=300)
 par(mfrow=c(2,3))
+
 #plot incidence
 plot (AL_br1$inci, main = paste('Tanzania', '\n\ Adj. R squared =', round(AL1_rq1,4)), 
       ylab = 'Weekly incidence', xlab = '', xaxt ='n',
@@ -858,8 +836,6 @@ lines (predict (AL1_model1), col = 'blue', type ='b', pch = 19, cex = 0.3)
 #x-axis
 axis (1, at=c(1,6,10,15,19), 
       labels = c('Feb', 'March', 'April', 'May', 'June'), cex.axis = 1.3)
-#adding first case
-#abline (v = f_c2, col = 'red', lty = 2)
 
 text (6, quantile(AL_br1$inci, 0.95),
       labels = paste ('First case = ', '\n\ ', ff_1, sep = ''), 
@@ -874,12 +850,11 @@ lines (predict (AL1_model2), col = 'blue', type ='b', pch = 19, cex = 0.3)
 #x-axis
 axis (1, at=c(1,6,10,15,19), 
       labels = c('Feb', 'March', 'April', 'May', 'June'), cex.axis = 1.3)
-#adding first case
-#abline (v = f_c2, col = 'red', lty = 2)
 
 text (20, quantile(AL_br2$inci, 0.95),
       labels = paste ('First case = ', '\n\ ', ff_2, sep = ''), 
       cex = 0.8, pos = '1', col= 'red', srt = 0)
+
 #plot incidence
 plot (AL_br3$inci, main = paste('Burkina Faso', '\n\ Adj. R squared =', round(AL1_rq3,4)), 
       ylab = 'Weekly incidence', xlab = '', xaxt ='n',
@@ -893,6 +868,7 @@ axis (1, at=c(1,6,10,15,19),
 text (20, quantile(AL_br3$inci, 0.95),
       labels = paste ('First case = ', '\n\ ', ff__3, sep = ''), 
       cex = 0.8, pos = '1', col= 'red', srt = 0)
+
 #plot incidence
 plot (AL_br4$inci, main = paste('Seychelles', '\n\ Adj. R squared =', round(AL1_rq4,4)), 
       ylab = 'Weekly incidence', xlab = '', xaxt ='n',
@@ -906,6 +882,7 @@ axis (1, at=c(1,6,10,15,19),
 text (7, quantile(AL_br4$inci, 0.95),
       labels = paste ('First case = ', '\n\ ', ff_4, sep = ''), 
       cex = 0.8, pos = '3', col= 'red', srt = 0)
+
 #plot incidence
 plot (AL_br5$inci, main = paste('Benin', '\n\ Adj. R squared =', round(AL1_rq5,4)), 
       ylab = 'Weekly incidence', xlab = '', xaxt ='n',
@@ -919,6 +896,7 @@ axis (1, at=c(1,6,10,15,19),
 text (7, quantile(AL_br5$inci, 0.95),
       labels = paste ('First case = ', '\n\ ', ff__5, sep = ''), 
       cex = 0.8, pos = '1', col= 'red', srt = 0)
+
 #plot incidence
 plot (AL_br6$inci, main = paste('Namibia', '\n\ Adj. R squared =', round(AL1_rq6,4)), 
       ylab = 'Weekly incidence', xlab = '', xaxt ='n',
