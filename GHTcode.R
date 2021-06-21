@@ -403,14 +403,14 @@ library(glmnet)
 cv_model_L <- cv.glmnet(x, y, alpha = 1)
 
 #find optimal lambda value that minimizes test MSE
-best_lambda_L <- cv_model$lambda.min
+best_lambda_L <- cv_model_L$lambda.min
 #produce plot of test MSE by lambda value
 plot(cv_model_L) 
 #find coefficients of best model
 best_model_L <- glmnet(x, y, alpha = 1, lambda = best_lambda_L)
 coef(best_model_L)
 
-predictor = indices12[,c(1:38)]
+predictor_L = indices12[,c(1:38)]
 
 model_L = lm(predictor_L$'Adjusted.R2' ~
                predictor_L$'Individuals.using.the.Internet'+
@@ -428,12 +428,12 @@ x1 <- data.matrix(indices12_log[,c(3,4,6,7,12,14,15,17,18,22,25,26,27,29,30,35,3
 cv_model_L1 <- cv.glmnet(x1, y1, alpha = 1)
 
 #find optimal lambda value that minimizes test MSE
-best_lambda_L1 <- cv_model1$lambda.min
+best_lambda_L1 <- cv_model_L1$lambda.min
 #produce plot of test MSE by lambda value
 plot(cv_model_L1) 
 #find coefficients of best model
 best_model_L1 <- glmnet(x1, y1, alpha = 1, lambda = best_lambda_L1)
-coef(best_model1)
+coef(best_model_L1)
 
 predictor_L1 = indices12_log[,c(1:38)]
 
